@@ -49,4 +49,21 @@ app.component('v-select', vSelect);
 app.directive('tooltip', TooltipDirective);
 app.use(pinia);
 app.directive('sticky-hscroll', stickyHScroll);
+
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[Vue Error]', err, info);
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff4444;color:#fff;padding:16px;z-index:99999;font-size:14px;white-space:pre-wrap;max-height:40vh;overflow:auto;';
+  div.textContent = `[Error Vue] ${info}\n${(err as any)?.message ?? err}`;
+  document.body.appendChild(div);
+};
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Unhandled Promise]', event.reason);
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff8800;color:#fff;padding:16px;z-index:99999;font-size:14px;white-space:pre-wrap;max-height:40vh;overflow:auto;';
+  div.textContent = `[Promise Error]\n${event.reason?.message ?? event.reason}`;
+  document.body.appendChild(div);
+});
+
 app.mount('#app');

@@ -8,6 +8,8 @@ import PhysicalStructurePage from './pages/PhysicalStructure.vue';
 import SpaceAssignmentPage from './pages/SpaceAssignment.vue';
 import PhysicalResourcesAnalyticsPage from './pages/PhysicalResourcesAnalytics.vue';
 import AdminQrs from './pages/AdminQrs.vue';
+import AdminQrsCreate from './pages/AdminQrsCreate.vue';
+import AdminQrsEdit from './pages/AdminQrsEdit.vue';
 
 
 
@@ -54,7 +56,18 @@ export const physicalResourcesRouting: RouteRecordRaw[] = [
     path: 'AdminQrs',
     component: AdminQrs,
     beforeEnter: [authGuard],
-    name:`${appName}.AdminQrs`,
+    name: `${appName}.AdminQrs`,
   },
-
+  {
+    path: 'AdminQrs/create',
+    component: AdminQrsCreate,
+    beforeEnter: [authGuard],
+    name: `${appName}.qrsCreate`,
+  },
+  {
+    path: 'AdminQrs/edit/:userId',
+    component: AdminQrsEdit,
+    beforeEnter: [authGuard],
+    name: `${appName}.qrsedit`,
+  },
 ];
