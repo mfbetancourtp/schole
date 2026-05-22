@@ -4,10 +4,18 @@
       icon="file-pdf"
       label="Descargar todos (PDF)"
       variant="secondary"
-      :disabled="loadingAll"
+      :disabled="loadingAll || loadingSelected"
       @click="downloadAll"
     />
-    <span v-if="loadingAll" class="qr-pdf-exporter__spinner">Generando PDF...</span>
+    <AppButton
+      v-if="selectedRows.length"
+      icon="file-pdf"
+      :label="`Descargar seleccionados (${selectedRows.length})`"
+      variant="primary"
+      :disabled="loadingAll || loadingSelected"
+      @click="downloadSelected"
+    />
+    <span v-if="loadingAll || loadingSelected" class="qr-pdf-exporter__spinner">Generando PDF...</span>
   </div>
 </template>
 
@@ -160,10 +168,15 @@ export default defineComponent({
       type: Object,
       default: () => ({}),
     },
+    selectedRows: {
+      type: Array,
+      default: () => [],
+    },
   },
 
   setup(props, { expose }) {
     const loadingAll = ref(false);
+    const loadingSelected = ref(false);
 
     const downloadAll = async () => {
       loadingAll.value = true;
@@ -194,9 +207,20 @@ export default defineComponent({
       }
     };
 
+    const downloadSelected = async () => {
+      if (!props.selectedRows.length) return;
+      loadingSelected.value = true;
+      try {
+        const pdf = await buildPdf(props.selectedRows as any[], 'Reporte de QRs — Seleccionados');
+        pdf.save('reporte-qrs-seleccionados.pdf');
+      } finally {
+        loadingSelected.value = false;
+      }
+    };
+
     expose({ downloadOne });
 
-    return { loadingAll, downloadAll };
+    return { loadingAll, loadingSelected, downloadAll, downloadSelected };
   },
 });
 </script>

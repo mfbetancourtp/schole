@@ -13,8 +13,15 @@
     </template>
 
     <template #content>
-      <div style="margin-bottom: 12px;">
-        <QrPdfExporter ref="pdfExporter" :params="params" />
+      <div style="margin-bottom: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <QrPdfExporter ref="pdfExporter" :params="params" :selected-rows="selectedRows" />
+        <span v-if="selectedRows.length" style="font-size: 0.85rem; color: #6b7280; display: flex; align-items: center; gap: 8px;">
+          {{ selectedRows.length }} seleccionado(s)
+          <button
+            @click="selectedRows = []"
+            style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 0.8rem; text-decoration: underline; padding: 0;"
+          >Limpiar selección</button>
+        </span>
       </div>
       <AppDatatable
         name="qrs"
@@ -56,6 +63,15 @@
             ></v-select>
           </AppFilter>
         </template>
+
+        <AppDatatableColumn label="" v-slot="{ row }" style="width: 40px;">
+          <input
+            type="checkbox"
+            :checked="selectedRows.some((r: any) => r.id === row.id)"
+            @change="toggleRow(row)"
+            style="width: 16px; height: 16px; cursor: pointer;"
+          />
+        </AppDatatableColumn>
 
         <AppDatatableColumn
           label="AULA"
@@ -240,6 +256,14 @@ export default defineComponent({
       edificioId: edificioId.value,
     }));
 
+    const selectedRows: Ref<any[]> = ref([]);
+
+    const toggleRow = (row: any) => {
+      const idx = selectedRows.value.findIndex((r) => r.id === row.id);
+      if (idx === -1) selectedRows.value.push(row);
+      else selectedRows.value.splice(idx, 1);
+    };
+
     const handleDownloadOne = (row: any) => {
       pdfExporter.value?.downloadOne(row);
     };
@@ -256,6 +280,8 @@ export default defineComponent({
       campusData,
       edificioData,
       params,
+      selectedRows,
+      toggleRow,
       handleDownloadOne,
     };
   },
