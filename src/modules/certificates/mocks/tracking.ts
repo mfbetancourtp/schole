@@ -1,0 +1,66 @@
+import type { TrackingData } from '../dtos/tracking.dto';
+
+export const trackingMock: TrackingData = {
+  summary: {
+    completed: 2,
+    totalChapters: 6,
+    inProgress: 1,
+    totalComments: 10,
+  },
+  chapters: [
+    {
+      id: 1,
+      title: 'Capítulo 1: Introducción',
+      description: 'Contexto, problema, objetivos y justificación del proyecto',
+      status: 'completed',
+      date: '05 de Enero, 2026',
+      comments: 2,
+      files: 2,
+    },
+    {
+      id: 2,
+      title: 'Capítulo 2: Marco Teórico',
+      description: 'Fundamentos teóricos y estado del arte',
+      status: 'in_review',
+      date: '25 de Enero, 2026',
+      comments: 3,
+      files: 1,
+    },
+    {
+      id: 3,
+      title: 'Capítulo 3: Análisis y Diseño',
+      description: 'Análisis de requerimientos y diseño de la solución',
+      status: 'in_progress',
+      date: '15 de Febrero, 2026',
+      comments: 5,
+      files: 0,
+    },
+    {
+      id: 4,
+      title: 'Capítulo 4: Implementación',
+      description: 'Desarrollo e implementación del sistema',
+      status: 'pending',
+      date: 'Fecha estimada: 10 de Marzo, 2026',
+      comments: 0,
+      files: 0,
+    },
+    {
+      id: 5,
+      title: 'Capítulo 5: Pruebas y Resultados',
+      description: 'Validación y análisis de resultados',
+      status: 'pending',
+      date: 'Fecha estimada: 30 de Marzo, 2026',
+      comments: 0,
+      files: 0,
+    },
+    {
+      id: 6,
+      title: 'Capítulo 6: Conclusiones',
+      description: 'Conclusiones, recomendaciones y trabajo futuro',
+      status: 'pending',
+      date: 'Fecha estimada: 15 de Abril, 2026',
+      comments: 0,
+      files: 0,
+    },
+  ],
+};

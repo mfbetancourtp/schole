@@ -1,0 +1,17 @@
+//Primary
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+  //Outline Primary
+.btn-outline-primary:hover {
+  color: $light;
+}
+
+//Ghost
+.o-btn--ghost {
+  color: #1e293b;
+  border: solid 1px #cbd5e1;
+}
+.o-btn--ghost:hover {
+  background-color: #e2e8f0;
+}

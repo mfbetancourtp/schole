@@ -1,0 +1,1 @@
+export type SizesModalConstant = 'xl' | 'lg' | 'md' | 'sm'

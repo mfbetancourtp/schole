@@ -1,0 +1,35 @@
+export interface Level {
+  id?: number;
+  thumbnail: string;
+  name: string;
+  abbreviation: any;
+  educationLevelId: number;
+  educationSublevelId: number;
+  levelTypeId: number;
+  facultyId: number;
+  maxQuality: number;
+  approvedQuality: number;
+  minQualityForRetrieval: number;
+  retrievalQuality: number;
+  useCompetencies: number;
+  percentageCompetencies: number;
+  useCompetenciesInReports: number;
+  useLearningOutcomes: number;
+  percentageLearningOutcomes: number;
+  showLearningOutcomesInReports: number;
+  useTopics: number;
+  useActivityCategories: number;
+  percentageActivityCategories: number;
+  showActivityCategoriesInReports: number;
+  code: string;
+  codeSnies: string;
+  titleGiven: string;
+  modality: number;
+  autoEnrollLevelSubjects: number;
+  autoEnrollDegreeSubjects: number;
+  useCredits: number;
+  useTransversalSubjects: number;
+  defaultUsePeriods: number;
+  defaultUseClassroom: number;
+  defaultUseLMS: number;
+}

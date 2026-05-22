@@ -1,0 +1,116 @@
+<template>
+  <AppFormModal :title="data ? 'Editar tipo de espacio' : 'Crear tipo de espacio'">
+    <template #content>
+      <form @submit.prevent="save" id="space-type-form">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Código</label>
+            <input type="text" class="form-control" v-model="form.code" placeholder="ej. LAB" :class="{ 'is-invalid': errors.code }" />
+            <div class="invalid-feedback" v-if="errors.code">
+              {{ errors.code }}
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre</label>
+            <input type="text" class="form-control" v-model="form.name" placeholder="ej. Laboratorio" :class="{ 'is-invalid': errors.name }" />
+            <div class="invalid-feedback" v-if="errors.name">
+              {{ errors.name }}
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Estado</label>
+            <div class="d-flex align-items-center gap-2 mt-1">
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="spaceStatus" v-model="form.isActive" />
+              </div>
+              <label for="spaceStatus" class="mb-0">Activo</label>
+            </div>
+          </div>
+        </div>
+      </form>
+    </template>
+
+    <template #actions>
+      <AppButton variant="primary" @click="save"> Guardar </AppButton>
+    </template>
+  </AppFormModal>
+</template>
+
+<script lang="ts">
+import { defineComponent, PropType, reactive } from 'vue';
+
+import AppFormModal from '../../../shared/components/Modal/AppFormModal.vue';
+import AppButton from '../../../shared/components/Buttons/AppButton.vue';
+
+import { SpaceTypeDto } from '../dtos/spaceType.dto';
+
+export default defineComponent({
+  name: 'SpaceTypeForm',
+
+  components: {
+    AppFormModal,
+    AppButton,
+  },
+
+  props: {
+    data: {
+      type: Object as PropType<SpaceTypeDto | null>,
+      default: null,
+    },
+  },
+
+  emits: ['save'],
+
+  setup(props, { emit }) {
+    const form = reactive({
+      code: props.data?.code ?? '',
+      name: props.data?.name ?? '',
+      isActive: props.data ? !!props.data.isActive : true,
+    });
+
+    const errors = reactive({
+      code: '',
+      name: '',
+    });
+
+    const validate = () => {
+      errors.code = '';
+      errors.name = '';
+
+      let valid = true;
+
+      if (!form.code.trim()) {
+        errors.code = 'El código es requerido';
+        valid = false;
+      }
+      if (!form.name.trim()) {
+        errors.name = 'El nombre es requerido';
+        valid = false;
+      }
+
+      return valid;
+    };
+
+    const save = () => {
+      if (!validate()) return;
+      emit('save', { ...form });
+    };
+
+    return {
+      form,
+      errors,
+      save,
+    };
+  },
+});
+</script>
+
+<style scoped>
+.form-check-input {
+  width: 2.5em;
+  height: 1.25em;
+  cursor: pointer;
+}
+</style>

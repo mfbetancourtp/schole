@@ -1,0 +1,9 @@
+export { WorkspacePlugin } from './WorkspacePlugin';
+export { HistoryPlugin } from './HistoryPlugin';
+export { FontPlugin } from './FontPlugin';
+export { AddBaseTypePlugin } from './AddBaseTypePlugin';
+export { LayerPlugin } from './LayerPlugin';
+export { CenterAlignPlugin } from './CenterAlignPlugin';
+export { CopyPlugin } from './CopyPlugin';
+export { DeleteHotKeyPlugin } from './DeleteHotKeyPlugin';
+export { SnapGuidesPlugin } from './SnapGuidesPlugin';

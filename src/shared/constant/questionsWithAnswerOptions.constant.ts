@@ -1,0 +1,1 @@
+export const QuestionsWithAnswerOptionsConstant = [2, 3];

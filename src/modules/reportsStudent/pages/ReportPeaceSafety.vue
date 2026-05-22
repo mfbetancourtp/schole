@@ -1,0 +1,441 @@
+<template>
+   <div class="content">
+    <BaseReport
+      :title="title"
+      :v$="v$"
+      :routes="routes"
+      :service="service"
+      :params="params"
+      :show-btn-generate="false"
+    >
+      <!-- 1) Si está cargando, muestro el spinner -->
+      <AppLoading v-if="loading" />
+
+      <!-- 2) Cuando ya no carga, muestro el resto -->
+      <template v-else>
+        <SelectionStudentsByParent v-if="data.matriculates.matriculateParentId" @update-student-user-id="updateStudentUserId"></SelectionStudentsByParent>
+        <AppEmptyResponse v-if="!reports.length" :showImage="true"></AppEmptyResponse>
+        <div v-else class="row">
+          <section class="content-button col-12 col-sm-4 col-md-3">
+            <AppCard
+              v-for="(dat, index) in reports"
+              :key="index"
+            >
+              <template #body>
+                <button @click="changeCurrentFile(dat)">
+                  <h5>{{ dat.value }} {{ dat.periodName }}</h5>
+                </button>
+              </template>
+            </AppCard>
+          </section>
+
+          <section class="content-document col-12 col-sm-8 col-md-9">
+            <AppLoading v-if="loadingStep"></AppLoading>
+
+            <AppCard v-else class="appcard-container">
+              <template #body>
+                <div class="text-center" style="color: #aaa">
+                  <!-- <div v-if="currentFile.value.disabledSend === 1" class="message">¡Bloqueado! Por favor contactarse con el área de contabilidad.</div> -->
+                  <AppEmptyResponse v-if="currentFile.value.disabledSend === 1" :show-image="true"  :title="'¡Bloqueado! Por favor contactarse con el área de contabilidad.'" :subtitle="false"
+                  ></AppEmptyResponse>
+                  <!-- <div v-else-if="currentFile.value.state === null" class="message">El boletín de calificaciones no ha sido publicado</div> -->
+                   <AppEmptyResponse
+                    AppEmptyResponse v-else-if="currentFile.value.state === null" :show-image="true"  :title="'El boletín de calificaciones no ha sido publicado'" :subtitle="false"
+                  ></AppEmptyResponse>
+                  <iframe v-else-if="currentFile.value.disabledSend === 0" :src="currentFile.value?.url" style="width: 100%; height: 61rem; border: none"></iframe>
+                  <!-- <div v-else>No hay archivo que mostrar.</div> -->
+                  <AppEmptyResponse v-else :show-image="true"  :title="'No hay archivo que mostrar'" :subtitle="false"
+                  ></AppEmptyResponse>
+                </div>
+              </template>
+              <template #footer>
+                <div class="d-flex flex-row-reverse">
+                  <div class="d-flex align-items-center gap-2">
+                    <AppButton
+                      :disabled="currentFile.value.disabledSend === 1 || currentFile.value.state === null"
+                      :href="currentFile.value?.url"
+                      :label="'Descargar'"
+                      variant="primary"
+                      target="_blank"
+                      outlined
+                    >
+                    </AppButton>
+                  </div>
+                </div>
+              </template>
+            </AppCard>
+          </section>
+        </div>
+        </template>
+      </BaseReport>
+  </div>
+</template>
+
+<script lang="ts">
+import { useI18n } from 'vue-i18n';
+import { computed, defineComponent, onMounted, reactive, ref, Ref } from 'vue';
+
+import { useVuelidate } from '@vuelidate/core';
+import { required } from '../../../shared/plugins/vuelidate.plugin';
+
+import BaseReport from '../components/BaseReport.vue';
+import AppLoading from '../../../shared/components/AppLoading.vue';
+import AppButton from '../../../shared/components/Buttons/AppButton.vue';
+import AppCard from '../../../shared/components/Card/AppCard.vue';
+import AppEmptyResponse from '../../../shared/components/AppEmptyResponse.vue';
+import SelectionStudentsByParent from '../../administration/components/SelectionStudentsByParent.vue';
+
+import { BreadCrumbsType } from '../../../shared/types/breadCrumbs.type';
+
+import { UpdateDatatableService } from '../../../shared/services/updateDatatable.service';
+import { GetInitDataService } from '../../../shared/services/getInitData.service';
+import { GetReportsService } from '../services/filters/getReports.service';
+import { GetTutorStudentsService } from '../../administration/services/getTutorStudents.service';
+import { UpdateReportStoreService } from '../services/reports/updateReportStore.service';
+import { GetPublishMassiveReportStoreService } from '../services/reports/getpublishMassiveReportStore.service';
+import { useHeaderStore } from '../../../stores/header.store';
+import { GetStudentsPeaceSafetyService } from '../services/filters/getStudentsPeaceSafety.service';
+
+const getTutorStudentsService = new GetTutorStudentsService();
+const updateDatatableService = new UpdateDatatableService();
+const getInitDataService = new GetInitDataService();
+const getReportsService = new GetReportsService();
+const updateReportStoreService = new UpdateReportStoreService();
+const getpublishMassiveReportStoreService = new GetPublishMassiveReportStoreService();
+const getStudentsPeaceSafetyService = new GetStudentsPeaceSafetyService();
+
+export default defineComponent({
+  name: 'ReportPeaceSafety',
+  components: {
+    AppLoading,
+    BaseReport,
+    AppButton,
+    AppEmptyResponse,
+    SelectionStudentsByParent,
+    AppCard,
+  },
+
+  setup() {
+    const { t } = useI18n();
+    const name = 'reportCard';
+    const title = 'reports.reportPeaceSafety';
+    const permission = 'reports.control.peaceSafety';
+    const routes: BreadCrumbsType[] = [
+      {
+        name: 'reports.name',
+        url: {
+          name: 'reports.list',
+        },
+      },
+      {
+        name: title,
+      },
+    ];
+
+    const showListStudents = ref(false);
+    const sendMailModal = ref(false);
+    const loading = ref(true);
+    const reportId = ref();
+    const currentMatriculateSubjectPeriod: Ref<any> = ref(null);
+    const openModal = ref(false);
+    const data = ref();
+    const reports = ref<any[]>([]);
+    const studentByTutors = ref<any>([]);
+    const currentFile: { value: any } = reactive({
+      value: null,
+    });
+    const loadingStep = ref(false);
+
+    const lockStudents: { value: boolean } = reactive({
+      value: false,
+    });
+    const filtersAux: { value: any } = reactive({
+      value: null,
+    });
+
+    const filters = ref<any>({
+      typeBulletin: 4,
+    });
+
+    const form = reactive({
+      academicPeriodId: null,
+      levelId: null,
+      degreeId: null,
+      groupId: null,
+      convertTo: 'pdf',
+      itemCode: permission,
+      typeBulletin: 4,
+    });
+    const v$ = useVuelidate(
+      {
+        form: {
+          academicPeriodId: { required },
+          levelId: { required },
+          degreeId: { required },
+          groupId: { required },
+          convertTo: { required },
+          itemCode: { required },
+          typeBulletin: {},
+        },
+      },
+      { form }
+    );
+
+    const service = new GetStudentsPeaceSafetyService();
+    const params = computed(() => ({
+      academicPeriodId: form.academicPeriodId,
+      levelId: form.levelId,
+      degreeId: form.degreeId,
+      groupId: form.groupId,
+      disabledSend: lockStudents.value ? 'disabled' : '',
+      itemCode: permission,
+      typeBulletin: form.typeBulletin,
+    }));
+
+    onMounted(async () => {
+      const headerStorage = useHeaderStore();
+      headerStorage.module = { name: 'Mis informes', url: '' };
+      headerStorage.moduleItem = { name: title, url: '' };
+      headerStorage.moduleSubItem = { name: '', url: '' };
+
+      studentByTutors.value = await getTutorStudentsService.run();
+      data.value = await getInitDataService.run();
+      if (data.value.matriculates.matriculateId || data.value.matriculates.matriculateParentId) {
+        const dataSend: any = {
+          itemCode: permission,
+          typeBulletin: 4,
+          matriculateId: data.value.matriculates.matriculateId ?? studentByTutors.value[0].matriculateId,
+        };
+        reports.value = await getReportsService.run(dataSend);
+        currentFile.value = reports.value[0];
+      }
+      loading.value = false;
+    });
+
+    const updateStudentUserId = async (studentUserId: any) => {
+      if (studentUserId) {
+        const params = {
+          matriculateId: studentByTutors.value.find((item: any) => item.people.userId === studentUserId).matriculateId ?? '',
+          itemCode: permission,
+          typeBulletin: 4,
+        };
+
+        reports.value = await getReportsService.run(params);
+        currentFile.value = reports.value[0];
+      }
+    };
+
+    const listStudents = async (lock: boolean) => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      reportId.value = null;
+      lockStudents.value = lock;
+      showListStudents.value = true;
+
+      setTimeout(() => {
+        refreshData();
+      }, 100);
+    };
+
+
+
+    const lockUnlockReport = async (element: any) => {
+      if (!element.report) {
+        return;
+      }
+
+      element.disabledButton = true;
+
+     
+    };
+
+    const getFilterReports = () => {
+      const data = { ...form };
+      return {
+        academicPeriodId: data.academicPeriodId,
+        levelId: data.levelId,
+        degreeId: data.degreeId,
+        groupId: data.groupId,
+        convertTo: 'pdf',
+        itemCode: permission,
+        typeBulletin: data.typeBulletin,
+      };
+    };
+
+    const sendMailAll = async () => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      filtersAux.value = {
+        ...getFilterReports(),
+      };
+
+      sendMailModal.value = true;
+    };
+    const sendIndividualMail = async (matriculateId: number) => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      filtersAux.value = {
+        ...getFilterReports(),
+        matriculateId,
+      };
+
+      sendMailModal.value = true;
+    };
+    const closeSendMailModalModal = () => {
+      sendMailModal.value = false;
+      refreshData();
+    };
+
+    const openFormModalEditPositionSubjectPeriods = async (matriculateSubjectPeriod: any) => {
+      currentMatriculateSubjectPeriod.value = matriculateSubjectPeriod;
+
+      openModal.value = true;
+    };
+    const closeModalForm = async () => {
+      openModal.value = false;
+      await listStudents(false);
+      currentMatriculateSubjectPeriod.value;
+    };
+
+    const refreshData = () => {
+      updateDatatableService.run();
+    };
+
+
+    const publicAll = async () => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+      const params = {
+        academicPeriodId: form.academicPeriodId,
+        levelId: form.levelId,
+        degreeId: form.degreeId,
+        groupId: form.groupId,
+        disabledSend: lockStudents.value ? 'disabled' : '',
+        itemCode: permission,
+        typeBulletin: form.typeBulletin,
+      };
+
+      const response = await getpublishMassiveReportStoreService.run(params);
+      console.log('data', response);
+      const service = await getStudentsPeaceSafetyService.run(params);
+      refreshData();
+    };
+
+    const publicIndividualReport = async (dataId: number) => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+      try {
+        await updateReportStoreService.run(dataId, 'Publicado');
+        refreshData();
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    const changeCurrentFile = (file: any) => {
+      currentFile.value = file;
+    };
+    const getProfileIdFromLocalStorage = () => {
+      const profileId = localStorage.getItem('profileId');
+      return profileId ? parseInt(profileId) : null;
+    };
+    const profileId = ref(getProfileIdFromLocalStorage());
+
+    return {
+      service,
+      params,
+      routes,
+      title,
+      name,
+      v$,
+      t,
+
+      showListStudents,
+      sendMailModal,
+      filtersAux,
+      profileId,
+      permission,
+      reportId,
+      loading,
+      filters,
+      currentFile,
+      loadingStep,
+      changeCurrentFile,
+
+      publicIndividualReport,
+      closeSendMailModalModal,
+      openFormModalEditPositionSubjectPeriods,
+      currentMatriculateSubjectPeriod,
+      closeModalForm,
+      sendIndividualMail,
+      lockUnlockReport,
+      listStudents,
+      refreshData,
+      sendMailAll,
+      publicAll,
+      openModal,
+      updateStudentUserId,
+      data,
+      reports,
+      studentByTutors,
+    };
+  },
+});
+</script>
+
+<style scoped>
+.position {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.button-position {
+  display: flex;
+  padding: 5px;
+  align-items: center;
+}
+
+.responsive-buttons {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  /* justify-content: flex-end; */
+  align-items: center;
+  gap: 10px;
+}
+.appcard-container {
+  height: unset;
+}
+.content-button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+@media (max-width: 500px) {
+  .responsive-buttons {
+    flex-direction: column;
+  }
+
+  .buttons {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card {
+    width: 100%;
+  }
+}
+</style>

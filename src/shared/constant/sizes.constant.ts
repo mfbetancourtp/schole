@@ -1,0 +1,1 @@
+export type SizesConstant = 'lg' | 'md' |'sm'

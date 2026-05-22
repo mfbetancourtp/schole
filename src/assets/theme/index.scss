@@ -1,0 +1,30 @@
+/*TailwindCSS*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import 'colors';
+
+/*Bootstrap 5*/
+@import 'bootstrap/scss/bootstrap.scss';
+
+@import 'effects';
+@import 'vars';
+@import 'forms';
+@import 'buttons';
+
+:root::-webkit-scrollbar {
+  width: 7px;
+}
+:root::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-gray-900-rgb), var(--opacity-color-40));
+  border-radius: var(--border-radius-1);
+}
+
+.o-sidebar::-webkit-scrollbar {
+  width: 7px;
+}
+.o-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-gray-900-rgb), var(--opacity-color-40));
+  border-radius: var(--border-radius-1);
+}

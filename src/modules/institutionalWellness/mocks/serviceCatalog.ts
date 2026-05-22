@@ -1,0 +1,58 @@
+import type { WellnessService } from '../dtos/serviceCatalog.dto';
+
+export const servicesMock: WellnessService[] = [
+  {
+    id: 1,
+    icon: 'balance-scale',
+    name: 'Apoyo Psicológico',
+    description: 'Sesiones individuales con profesionales de la salud mental para apoyar tu bienestar emocional.',
+    availability: 'today',
+    availabilityLabel: 'Disponible hoy',
+    requirements: ['Carné estudiantil vigente', 'Semestre mínimo cursado (3er semestre)', 'Formato de solicitud firmado'],
+  },
+  {
+    id: 2,
+    icon: 'heartbeat',
+    name: 'Consulta Médica General',
+    description: 'Atención médica preventiva y diagnóstico inicial de condiciones de salud comunes.',
+    availability: 'today',
+    availabilityLabel: 'Disponible hoy',
+    requirements: ['Carné estudiantil vigente', 'Historia clínica actualizada'],
+  },
+  {
+    id: 3,
+    icon: 'comments',
+    name: 'Orientación Vocacional',
+    description: 'Acompañamiento profesional para la toma de decisiones académicas y de carrera.',
+    availability: 'tomorrow',
+    availabilityLabel: 'Disponible mañana',
+    requirements: ['Carné estudiantil vigente', 'Cuestionario de intereses completado'],
+  },
+  {
+    id: 4,
+    icon: 'user-friends',
+    name: 'Trabajo Social',
+    description: 'Apoyo en situaciones económicas, familiares o sociales que afecten tu desarrollo académico.',
+    availability: 'today',
+    availabilityLabel: 'Disponible hoy',
+    requirements: ['Carné estudiantil vigente', 'Carta de solicitud'],
+  },
+  {
+    id: 5,
+    icon: 'running',
+    name: 'Actividades Deportivas',
+    description: 'Programas de actividad física y deportiva para promover hábitos de vida saludable.',
+    availability: 'open',
+    availabilityLabel: 'Inscripciones abiertas',
+    requirements: ['Carné estudiantil vigente', 'Examen médico vigente'],
+  },
+  {
+    id: 6,
+    icon: 'book-open',
+    name: 'Asesoría Académica',
+    description: 'Tutorías y orientación para mejorar tu rendimiento académico y estrategias de estudio.',
+    availability: 'today',
+    availabilityLabel: 'Disponible hoy',
+    requirements: ['Carné estudiantil vigente', 'Horario de clases actualizado'],
+  },
+];

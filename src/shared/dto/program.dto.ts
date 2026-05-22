@@ -1,0 +1,43 @@
+import { DegreeLevelsDto } from "./degreeLevels.dto";
+import { TimestampDto } from "./timestamp.dto";
+
+export interface ProgramDto extends TimestampDto {
+    id: number;
+    institutionId: number;
+    thumbnail?: any;
+    levelId: number;
+    name: string;
+    abbreviation: string;
+    educationLevelId: number;
+    educationSublevelId: number;
+    levelTypeId: null;
+    facultyId: null;
+    maxQuality: null;
+    approvedQuality: null;
+    minQualityForRetrieval: null;
+    retrievalQuality: null;
+    useCompetencies: number;
+    percentageCompetencies: number;
+    useCompetenciesInReports: number;
+    useLearningOutcomes: number;
+    percentageLearningOutcomes: number;
+    showLearningOutcomesInReports: number;
+    useTopics: number;
+    useActivityCategories: number;
+    percentageActivityCategories: number;
+    showActivityCategoriesInReports: number;
+    code: null;
+    codeSnies: null;
+    titleGiven: null;
+    modality: null;
+    autoEnrollLevelSubjects: number;
+    autoEnrollDegreeSubjects: number;
+    useCredits: number;
+    useTransversalSubjects: number;
+    defaultUsePeriods: number;
+    defaultUseClassroom: number;
+    defaultUseLMS: number;
+    createdAt: string;
+    updatedAt: string;
+    degrees: DegreeLevelsDto[];
+}

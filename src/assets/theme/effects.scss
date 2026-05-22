@@ -1,0 +1,11 @@
+@layer components {
+  /*Cards*/
+  .card-hover:hover {
+    @apply tw-shadow-xl;
+  }
+
+  /*End Cards*/
+}
+.form-control:focus {
+  box-shadow: none;
+}

@@ -1,0 +1,7 @@
+body {
+  font-family: 'Roboto';
+}
+/*Nav Bar*/
+.nav-item .nav-link:not(.active):hover {
+  background-color: rgba(128, 128, 128, 0.1);
+}

@@ -1,0 +1,900 @@
+<template>
+  <AppLoading v-if="loading"></AppLoading>
+  <div class="content" v-else-if="profileId === 4 || profileId === 2">
+    <div>
+      <BaseReport
+        :title="title"
+        :v$="v$"
+        :routes="routes"
+        :service="service"
+        :params="params"
+        :show-btn-generate="false"
+      >
+        <SelectionStudentsByParent
+          v-if="data.matriculates.matriculateParentId"
+          @update-student-user-id="updateStudentUserId"
+        ></SelectionStudentsByParent>
+        <AppEmptyResponse
+          v-if="!reports.length"
+          :showImage="true"
+        ></AppEmptyResponse>
+        <div v-else class="row">
+          <section class="content-button col-3">
+            <AppCard
+              v-for="(dat, index) in reports"
+              v-bind:class="{ 'borde-left': currentFile.value?.id == dat.id }"
+              @click="changeCurrentFile(dat)"
+              class="card-hover mt-1 mb-1 pointer card"
+              :key="index"
+            >
+              <template #body>
+                <h5>{{ dat.value }} {{ dat.periodName }}</h5>
+              </template>
+            </AppCard>
+          </section>
+
+          <section class="content-document col-9">
+            <AppLoading v-if="loadingStep"></AppLoading>
+
+            <AppCard v-else class="h-100">
+              <template #body>
+                <div class="text-center" style="color: #aaa">
+                  <div
+                    v-if="currentFile.value.disabledSend === 1"
+                    class="message"
+                  >
+                    ¡Bloqueado! Por favor contactarse con el área de
+                    contabilidad.
+                  </div>
+                  <div
+                    v-else-if="currentFile.value.state === null"
+                    class="message"
+                  >
+                    El boletín de calificaciones no ha sido publicado
+                  </div>
+                  <iframe
+                    v-else-if="currentFile.value.disabledSend === 0"
+                    :src="currentFile.value?.url"
+                    style="width: 100%; height: 61rem; border: none"
+                  ></iframe>
+                  <div v-else>No hay archivo que mostrar.</div>
+                </div>
+              </template>
+              <template #footer>
+                <div class="d-flex flex-row-reverse">
+                  <div class="d-flex align-items-center gap-2">
+                    <AppButton
+                      :disabled="
+                        currentFile.value.disabledSend === 1 ||
+                        currentFile.value.state === null
+                      "
+                      :href="currentFile.value?.url"
+                      :label="'Descargar'"
+                      variant="primary"
+                      target="_blank"
+                      outlined
+                    >
+                    </AppButton>
+                  </div>
+                </div>
+              </template>
+            </AppCard>
+          </section>
+        </div>
+      </BaseReport>
+    </div>
+  </div>
+
+  <BaseReport
+    v-else
+    :title="title"
+    :v$="v$"
+    :routes="routes"
+    :service="service"
+    :params="params"
+    :show-btn-generate="false"
+  >
+    <!-- Form -->
+    <FilterAcademicPeriodWithLevels
+      label="hola"
+      :academic-periods="filters.academicPeriods"
+      :permission="permission"
+      :v$="v$"
+    >
+    </FilterAcademicPeriodWithLevels>
+
+    <div class="form-row">
+      <FilterStudentClassification
+        :options="filters.studentCategories"
+        :v$="v$"
+      ></FilterStudentClassification>
+    </div>
+
+    <div class="form-row">
+      <AppFormField
+        :form-control="v$.form.decimalNumber"
+        label="reports.filters.numberOfDecimals"
+      >
+        <input
+          id="decimalNumber"
+          class="form-control"
+          type="number"
+          v-model="v$.form.decimalNumber.$model"
+        />
+      </AppFormField>
+
+      <FilterSubjectClassification
+        :options="filters.subjectCategories"
+        :v$="v$"
+      ></FilterSubjectClassification>
+    </div>
+
+    <FilterShowFields :options="filters.options" :v$="v$"></FilterShowFields>
+
+    <!-- btns form -->
+    <div class="responsive-buttons">
+      <AppButton
+        class="buttons"
+        :label="'Listar bloqueados'"
+        :native-type="'button'"
+        @click="listStudents(true)"
+        variant="primary"
+      >
+      </AppButton>
+
+      <AppButton
+        class="buttons"
+        :label="'reports.filters.listStudents'"
+        :native-type="'button'"
+        @click="listStudents(false)"
+        variant="primary"
+      ></AppButton>
+
+      <AppButton
+        :label="'reports.filters.generateAll'"
+        :disabled="!showListStudents"
+        class="buttons"
+        :native-type="'button'"
+        @click="generateAll()"
+        variant="primary"
+      ></AppButton>
+
+      <AppButton
+        :label="'Publicar todos'"
+        :disabled="!showListStudents"
+        class="buttons"
+        :native-type="'button'"
+        @click="publicAll()"
+        variant="primary"
+      ></AppButton>
+
+      <AppButton
+        :label="'reports.filters.sendGenerated'"
+        :disabled="!showListStudents"
+        class="buttons"
+        :native-type="'button'"
+        @click="sendMailAll()"
+        variant="primary"
+      ></AppButton>
+
+      <AppButton
+        :disabled="!showListStudents"
+        :label="'Descargar todos'"
+        class="buttons"
+        :native-type="'button'"
+        @click="downloadAll()"
+      ></AppButton>
+
+
+    </div>
+
+    <!-- ReportProgress -->
+    <div class="mt-2" v-if="reportId">
+      <ReportProgress
+        :report-id="reportId"
+        @finish-generation="refreshData()"
+      ></ReportProgress>
+    </div>
+
+    <!-- dataTable -->
+    <div v-if="showListStudents" class="mt-2 table-responsive">
+      <AppDatatable :service="service" :params="params" :name="name">
+        <AppDatatableColumn
+          :label="'core.generalTerms.academic.student.singular'"
+          field="student"
+          :sortable="true"
+          v-slot="{ row }"
+        >
+          {{ row.student }}
+        </AppDatatableColumn>
+
+        <AppDatatableColumn
+          :label="'academicPrograms.levels.singular'"
+          field="levels"
+          :sortable="true"
+          v-slot="{ row }"
+        >
+          {{ row.levelName }}
+        </AppDatatableColumn>
+
+        <AppDatatableColumn
+          :label="'academicPrograms.degrees.singular'"
+          field="degrees"
+          :sortable="true"
+          v-slot="{ row }"
+        >
+          {{ row.degreeName }} {{ row.groupName }}
+        </AppDatatableColumn>
+
+        <AppDatatableColumn
+          :label="'Promedio'"
+          field="average"
+          :sortable="true"
+          v-slot="{ row }"
+        >
+          {{ row.finalScore }}
+        </AppDatatableColumn>
+
+        <AppDatatableColumn
+          class="position"
+          :label="'Puesto'"
+          field="position"
+          :sortable="true"
+          v-slot="{ row }"
+        >
+          <div class="d-flex gap-1">
+            <div
+              class="button-position"
+              :style="{
+                backgroundColor: row.isEdit === 1 ? '#ffaa' : 'unset',
+              }"
+            >
+              {{ row.position }}
+            </div>
+            <div class="button-position">
+              <AppButtonEdit
+                @click="openFormModalEditPositionSubjectPeriods(row)"
+              >
+              </AppButtonEdit>
+            </div>
+          </div>
+        </AppDatatableColumn>
+        <AppDatatableColumn
+          :label="'reports.filters.status'"
+          field="status"
+          :sortable="true"
+          v-slot="{ row }"
+        >
+          <div class="tw-leading-5 tw-truncate tw-font-light">
+            <span
+              v-if="row.report?.disabledSend"
+              class="bg-danger text-white rounded-pill ps-2 pe-2"
+              >Bloqueado</span
+            >
+
+            <span
+              v-else
+              v-bind:class="{
+                'bg-dark': row.status == 'Pendiente',
+                'bg-warning':
+                  row.report.state == 'Publicado' &&
+                  !row.report.isSent &&
+                  row.status == 'Generado',
+                'bg-success': row.status == 'Generado' && !row.report.isSent,
+                'bg-primary': row.report.isSent,
+              }"
+              class="text-white rounded-pill ps-2 pe-2"
+            >
+              {{
+                !row.report.isSent
+                  ? row.report.state
+                    ? row.report.state
+                    : row.status
+                  : 'Enviado'
+              }}
+            </span>
+          </div>
+        </AppDatatableColumn>
+
+        <AppDatatableColumn :label="'core.actions'" v-slot="{ row }">
+          <AppButtonGroup size="sm">
+            <AppButton
+              @click="generateIndividualReport(row)"
+              v-tooltip="t('Generar reporte')"
+              v-if="!row.report?.url"
+              variant="primary"
+              icon="file-alt"
+              outlined
+            ></AppButton>
+
+            <AppButton
+              v-tooltip="t('Volver a generar reporte')"
+              @click="generateIndividualReport(row)"
+              v-if="row.report?.url"
+              variant="primary"
+              icon="sync-alt"
+              outlined
+            ></AppButton>
+
+            <AppButton
+              v-if="row.report.disabledSend"
+              @click="lockUnlockReport(row)"
+              v-tooltip="t('Desbloquear')"
+              variant="primary"
+              icon="ban"
+              outlined
+            ></AppButton>
+
+            <AppButton
+              v-if="!row.report.disabledSend && row.report?.url"
+              @click="lockUnlockReport(row)"
+              v-tooltip="t('Bloquear')"
+              icon="check-circle"
+              variant="primary"
+              outlined
+            ></AppButton>
+
+            <AppButton
+              v-if="row.report?.url && !row.report?.disabledSend"
+              v-tooltip="t('Enviar reporte por email')"
+              @click="sendIndividualMail(row.id)"
+              variant="primary"
+              icon="envelope"
+              outlined
+            ></AppButton>
+
+            <AppButton
+              v-tooltip="
+                t('academicAdministration.subjectAssignmentsCourse.report')
+              "
+              v-if="row.report?.url && !row.report?.disabledSend"
+              :href="row.report.url"
+              variant="primary"
+              target="_blank"
+              icon="eye"
+              outlined
+            >
+            </AppButton>
+
+            <AppButton
+              @click="publicIndividualReport(row.report.id)"
+              v-tooltip="t('publicar reporte')"
+              v-if="row.report?.url && !row.report?.disabledSend"
+              variant="primary"
+              icon="upload"
+              outlined
+            ></AppButton>
+          </AppButtonGroup>
+        </AppDatatableColumn>
+      </AppDatatable>
+
+      <AppModal v-model="sendMailModal">
+        <ConfirmSendMailReportCardsEndOfYear
+          v-if="sendMailModal"
+          :filters="filtersAux.value"
+          @close="closeSendMailModalModal"
+        >
+        </ConfirmSendMailReportCardsEndOfYear>
+      </AppModal>
+      <AppModal v-model="openModal">
+        <SubjectPositionFinalFormEdit
+          v-if="openModal"
+          :data="currentMatriculateSubjectPeriod"
+          @close="closeModalForm"
+        />
+      </AppModal>
+    </div>
+  </BaseReport>
+</template>
+
+<script lang="ts">
+import { useI18n } from 'vue-i18n';
+import { computed, defineComponent, onMounted, reactive, ref, Ref } from 'vue';
+
+import { useVuelidate } from '@vuelidate/core';
+import { required } from '../../../shared/plugins/vuelidate.plugin';
+
+import BaseReport from '../components/BaseReport.vue';
+import AppButtonEdit from '../../../shared/components/Buttons/AppButtonEdit.vue';
+import ReportProgress from '../components/ReportProgress.vue';
+import FilterShowFields from '../components/FilterShowFields.vue';
+import AppLoading from '../../../shared/components/AppLoading.vue';
+import AppModal from '../../../shared/components/Modal/AppModal.vue';
+import AppCard from '../../../shared/components/Card/AppCard.vue';
+import AppButton from '../../../shared/components/Buttons/AppButton.vue';
+import AppButtonGroup from '../../../shared/components/AppButtonGroup.vue';
+import AppFormField from '../../../shared/components/Forms/AppFormField.vue';
+import FilterStudentClassification from '../components/FilterStudentClassification.vue';
+import FilterSubjectClassification from '../components/FilterSubjectClassification.vue';
+import FilterAcademicPeriodWithLevels from '../components/FilterAcademicPeriodWithLevels.vue';
+import AppDatatable from '../../../shared/components/Datatable/AppDatatable.vue';
+import AppDatatableColumn from '../../../shared/components/Datatable/AppDatatableColumn.vue';
+import ConfirmSendMailReportCardsEndOfYear from '../components/ConfirmSendMailReportCardsEndOfYear.vue';
+import AppEmptyResponse from '../../../shared/components/AppEmptyResponse.vue';
+import SubjectPositionFinalFormEdit from '../components/SubjectPositionFinalFormEdit.vue';
+import SelectionStudentsByParent from '../../administration/components/SelectionStudentsByParent.vue';
+
+import { BreadCrumbsType } from '../../../shared/types/breadCrumbs.type';
+
+import {
+  GetFiltersCardByGroupFinalService,
+  IGetFiltersCardByGroupFinalService,
+} from '../services/filters/getFiltersCardByGroupFinal.service';
+import { LockUnlockReportEndOfYearService } from '../services/filters/lockUnlockReportEndOfYear.service';
+import { UpdateDatatableService } from '../../../shared/services/updateDatatable.service';
+import { GetStudentsByAcademicPeriodIdService } from '../services/filters/getStudentsByAcademicPeriodId.service';
+import { GenerateReportCardsByLevelFinalService } from '../services/reports/generateReportCardsByLevelFinal.service';
+import { GenerateReportCardPerStudentFinalService } from '../services/reports/generateReportCardPerStudentFinal.service';
+import { DownloadReportCardsFinalService } from '../services/reports/downloadReportCardsFinal.service';
+import { GetInitDataService } from '../../../shared/services/getInitData.service';
+import { GetReportsService } from '../services/filters/getReports.service';
+import { GetTutorStudentsService } from '../../administration/services/getTutorStudents.service';
+import { UpdateReportStoreService } from '../services/reports/updateReportStore.service';
+import { GetPublishMassiveReportStoreService } from '../services/reports/getpublishMassiveReportStore.service';
+import { useHeaderStore } from '../../../stores/header.store';
+
+const getTutorStudentsService = new GetTutorStudentsService();
+const generateReportCardPerStudentFinalService =
+  new GenerateReportCardPerStudentFinalService();
+const generateReportCardsByLevelFinalService =
+  new GenerateReportCardsByLevelFinalService();
+const getFiltersCardByGroupFinalService =
+  new GetFiltersCardByGroupFinalService();
+const lockUnlockReportEndOfYear = new LockUnlockReportEndOfYearService();
+const updateDatatableService = new UpdateDatatableService();
+const downloadReportCardsFinalService = new DownloadReportCardsFinalService();
+const getInitDataService = new GetInitDataService();
+const getReportsService = new GetReportsService();
+const updateReportStoreService = new UpdateReportStoreService();
+const getpublishMassiveReportStoreService =
+  new GetPublishMassiveReportStoreService();
+const getStudentsByAcademicPeriodIdService =
+  new GetStudentsByAcademicPeriodIdService();
+
+export default defineComponent({
+  name: 'ReportCardEndOfYear',
+  components: {
+    FilterAcademicPeriodWithLevels,
+    FilterStudentClassification,
+    FilterSubjectClassification,
+    ConfirmSendMailReportCardsEndOfYear,
+    AppDatatableColumn,
+    FilterShowFields,
+    AppButtonGroup,
+    AppButtonEdit,
+    ReportProgress,
+    AppFormField,
+    AppDatatable,
+    AppLoading,
+    BaseReport,
+    AppButton,
+    AppModal,
+    SubjectPositionFinalFormEdit,
+    AppEmptyResponse,
+    SelectionStudentsByParent,
+    AppCard,
+  },
+
+  setup() {
+    const { t } = useI18n();
+    const name = 'reportCard';
+    const title = 'reports.reportCardEndOfYear';
+    const permission = 'reports.cards.reportCardEndOfYear';
+    const routes: BreadCrumbsType[] = [
+      {
+        name: 'reports.name',
+        url: {
+          name: 'reports.list',
+        },
+      },
+      {
+        name: title,
+      },
+    ];
+
+    const showListStudents = ref(false);
+    const sendMailModal = ref(false);
+    const loading = ref(true);
+    const reportId = ref();
+    const currentMatriculateSubjectPeriod: Ref<any> = ref(null);
+    const openModal = ref(false);
+    const data = ref();
+    const reports = ref<any[]>([]);
+    const studentByTutors = ref<any>([]);
+    const currentFile: { value: any } = reactive({
+      value: null,
+    });
+    const loadingStep = ref(false);
+
+    const lockStudents: { value: boolean } = reactive({
+      value: false,
+    });
+    const filtersAux: { value: any } = reactive({
+      value: null,
+    });
+
+    const filters = ref<IGetFiltersCardByGroupFinalService>({
+      subjectCategories: [],
+      studentCategories: [],
+      academicPeriods: [],
+      options: {},
+      typeBulletin: 1,
+    });
+
+    const form = reactive({
+      academicPeriodId: null,
+      levelId: null,
+      degreeId: null,
+      groupId: null,
+      periodId: null,
+      convertTo: 'pdf',
+      studentCategories: [],
+      subjectCategories: [],
+      decimalNumber: null,
+      itemCode: permission,
+      showFields: [],
+      typeBulletin: 1,
+    });
+    const v$ = useVuelidate(
+      {
+        form: {
+          academicPeriodId: { required },
+          levelId: { required },
+          degreeId: { required },
+          groupId: { required },
+          convertTo: { required },
+          studentCategories: {},
+          subjectCategories: {},
+          decimalNumber: {},
+          itemCode: { required },
+          showFields: { required },
+          typeBulletin: {},
+        },
+      },
+      { form }
+    );
+
+    const service = new GetStudentsByAcademicPeriodIdService();
+    const params = computed(() => ({
+      academicPeriodId: form.academicPeriodId,
+      levelId: form.levelId,
+      degreeId: form.degreeId,
+      groupId: form.groupId,
+      studentCat: form.studentCategories,
+      subjectCat: form.subjectCategories,
+      disabledSend: lockStudents.value ? 'disabled' : '',
+      itemCode: permission,
+      options: form.showFields,
+      typeBulletin: form.typeBulletin,
+    }));
+
+    onMounted(async () => {
+
+      const headerStorage = useHeaderStore();
+      headerStorage.module = { name: 'Home', url: '' };
+      headerStorage.moduleItem = { name: title, url: '' };
+      headerStorage.moduleSubItem = { name: '', url: '' };
+
+      filters.value = await getFiltersCardByGroupFinalService.run();
+      studentByTutors.value = await getTutorStudentsService.run();
+      data.value = await getInitDataService.run();
+      if (
+        data.value.matriculates.matriculateId ||
+        data.value.matriculates.matriculateParentId
+      ) {
+        const dataSend: any = {
+          itemCode: permission,
+          typeBulletin: 1,
+          matriculateId:
+            data.value.matriculates.matriculateId ??
+            studentByTutors.value[0].matriculateId,
+        };
+        reports.value = await getReportsService.run(dataSend);
+        currentFile.value = reports.value[0];
+      }
+      loading.value = false;
+    });
+
+    const updateStudentUserId = async (studentUserId: any) => {
+      if (studentUserId) {
+        const params = {
+          matriculateId:
+            studentByTutors.value.find(
+              (item: any) => item.people.userId === studentUserId
+            ).matriculateId ?? '',
+          itemCode: permission,
+          typeBulletin: 1,
+        };
+
+        reports.value = await getReportsService.run(params);
+        currentFile.value = reports.value[0];
+      }
+    };
+
+    const listStudents = async (lock: boolean) => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      reportId.value = null;
+      lockStudents.value = lock;
+      showListStudents.value = true;
+
+      setTimeout(() => {
+        refreshData();
+      }, 100);
+    };
+
+    const generateAll = async () => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      try {
+        const response = await generateReportCardsByLevelFinalService.run(
+          getFilterReports()
+        );
+
+        reportId.value = response.reportId;
+      } catch (e) {
+        console.log(e);
+      }
+    };
+
+    const generateIndividualReport = async (data: any) => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      try {
+        const response = await generateReportCardPerStudentFinalService.run({
+          ...getFilterReports(),
+          userId: data.userId,
+          matriculateId: data.id,
+        });
+
+        reportId.value = response.reportId;
+      } catch (e) {
+        console.log(e);
+      }
+    };
+
+    const lockUnlockReport = async (element: any) => {
+      if (!element.report) {
+        return;
+      }
+
+      element.disabledButton = true;
+
+      try {
+        await lockUnlockReportEndOfYear.run(
+          element.report.id,
+          !element.report.disabledSend
+        );
+        refreshData();
+      } catch (e) {
+        console.log(e);
+      }
+      element.disabledButton = false;
+    };
+
+    const getFilterReports = () => {
+      const data = { ...form };
+      return {
+        academicPeriodId: data.academicPeriodId,
+        levelId: data.levelId,
+        degreeId: data.degreeId,
+        groupId: data.groupId,
+        convertTo: 'pdf',
+        studentCategories: data.studentCategories,
+        subjectCategoriesIds: data.subjectCategories,
+        decimalNumber: data.decimalNumber,
+        itemCode: permission,
+        options: data.showFields,
+        typeBulletin: data.typeBulletin,
+      };
+    };
+
+    const sendMailAll = async () => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      filtersAux.value = {
+        ...getFilterReports(),
+      };
+
+      sendMailModal.value = true;
+    };
+    const sendIndividualMail = async (matriculateId: number) => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      filtersAux.value = {
+        ...getFilterReports(),
+        matriculateId,
+      };
+
+      sendMailModal.value = true;
+    };
+    const closeSendMailModalModal = () => {
+      sendMailModal.value = false;
+      refreshData();
+    };
+
+    const openFormModalEditPositionSubjectPeriods = async (
+      matriculateSubjectPeriod: any
+    ) => {
+      currentMatriculateSubjectPeriod.value = matriculateSubjectPeriod;
+
+      openModal.value = true;
+    };
+    const closeModalForm = async () => {
+      openModal.value = false;
+      await listStudents(false);
+      currentMatriculateSubjectPeriod.value;
+    };
+
+    const refreshData = () => {
+      updateDatatableService.run();
+    };
+
+    const downloadAll = async () => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+
+      try {
+        const filter = getFilterReports();
+
+        const dataSend = {
+          academicPeriodId: filter.academicPeriodId,
+          levelId: filter.levelId,
+          degreeId: filter.degreeId,
+          groupId: filter.groupId,
+          studentCategoriesIds: filter.studentCategories,
+          itemCode: filter.itemCode,
+          typeBulletin: filter.typeBulletin,
+        };
+
+        const response = await downloadReportCardsFinalService.run(dataSend);
+        const url = response.file;
+
+        if (url) {
+          const link = document.createElement('a');
+          link.href = url;
+          document.body.appendChild(link);
+          link.click();
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    };
+
+    const publicAll = async () => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+      const params = {
+        academicPeriodId: form.academicPeriodId,
+        levelId: form.levelId,
+        degreeId: form.degreeId,
+        groupId: form.groupId,
+        studentCat: form.studentCategories,
+        subjectCat: form.subjectCategories,
+        disabledSend: lockStudents.value ? 'disabled' : '',
+        itemCode: permission,
+        options: form.showFields,
+        typeBulletin: form.typeBulletin,
+      };
+
+      const response = await getpublishMassiveReportStoreService.run(params);
+      const service = await getStudentsByAcademicPeriodIdService.run(params);
+
+      refreshData();
+    };
+
+    const publicIndividualReport = async (dataId: number) => {
+      const formIsValid = await v$.value.$validate();
+      if (!formIsValid) return;
+      try {
+        await updateReportStoreService.run(dataId, 'Publicado');
+        refreshData();
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    const changeCurrentFile = (file: any) => {
+      currentFile.value = file;
+    };
+    const getProfileIdFromLocalStorage = () => {
+      const profileId = localStorage.getItem('profileId');
+      return profileId ? parseInt(profileId) : null;
+    };
+    const profileId = ref(getProfileIdFromLocalStorage());
+
+    return {
+      service,
+      params,
+      routes,
+      title,
+      name,
+      v$,
+      t,
+
+      showListStudents,
+      sendMailModal,
+      filtersAux,
+      permission,
+      reportId,
+      loading,
+      filters,
+      currentFile,
+      loadingStep,
+      changeCurrentFile,
+      profileId,
+
+      generateIndividualReport,
+      publicIndividualReport,
+      closeSendMailModalModal,
+      openFormModalEditPositionSubjectPeriods,
+      currentMatriculateSubjectPeriod,
+      closeModalForm,
+      sendIndividualMail,
+      lockUnlockReport,
+      listStudents,
+      downloadAll,
+      refreshData,
+      sendMailAll,
+      openModal,
+      generateAll,
+      publicAll,
+      updateStudentUserId,
+      data,
+      reports,
+      studentByTutors,
+    };
+  },
+});
+</script>
+
+<style scoped>
+.position {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.button-position {
+  display: flex;
+  padding: 5px;
+  align-items: center;
+}
+
+.responsive-buttons {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  /* justify-content: flex-end; */
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 500px) {
+  .responsive-buttons {
+    flex-direction: column;
+  }
+
+  .buttons {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card {
+    width: 100%;
+  }
+}
+</style>
